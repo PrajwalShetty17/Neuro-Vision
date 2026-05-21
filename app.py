@@ -22,7 +22,7 @@ def compile_binary():
 
 @app.route("/", methods=["GET"])
 def index():
-    return render_template("dashboard.html", nodes=NODE_INFO)
+return render_template("dashboard.html", nodes=NODE_INFO)
 
 @app.route("/route-traffic", methods=["POST"])
 def route_traffic():
