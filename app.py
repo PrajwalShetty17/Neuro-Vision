@@ -5,13 +5,18 @@ from flask import Flask, render_template, jsonify, request
 
 app = Flask(__name__)
 
+# Expanded dictionary with new countries
 NODE_INFO = {
     0: {"name": "San Francisco Edge", "region": "US-West"},
     1: {"name": "New York Edge",     "region": "US-East"},
     2: {"name": "London Gateway",    "region": "UK-Europe"},
     3: {"name": "Frankfurt Hub",     "region": "EU-Central"},
     4: {"name": "Bengaluru Core",    "region": "Asia-South"},
-    5: {"name": "Tokyo Pop",         "region": "Asia-East"}
+    5: {"name": "Tokyo Pop",         "region": "Asia-East"},
+    6: {"name": "Sydney Relay",      "region": "Oceania"},
+    7: {"name": "São Paulo Link",    "region": "SA-East"},
+    8: {"name": "Cape Town Base",    "region": "AF-South"},
+    9: {"name": "Dubai Gateway",     "region": "ME-Central"}
 }
 
 def compile_binary():
@@ -22,7 +27,7 @@ def compile_binary():
 
 @app.route("/", methods=["GET"])
 def index():
-return render_template("dashboard.html", nodes=NODE_INFO)
+    return render_template("dashboard.html", nodes=NODE_INFO)
 
 @app.route("/route-traffic", methods=["POST"])
 def route_traffic():
@@ -49,7 +54,9 @@ def route_traffic():
         return jsonify({"success": False, "error": "Engine routing exception"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
+
 if __name__ == "__main__":
-    # This ensures the app binds to the cloud environment port dynamically
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
+        
