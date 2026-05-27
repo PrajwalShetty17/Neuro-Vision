@@ -3,17 +3,22 @@
 #include <limits.h>
 
 #define INF INT_MAX
-#define MAX_NODES 6
+#define MAX_NODES 10
 
-// Graph definition: 6 Core Global Datacenter Hubs
-// 0: San Francisco, 1: New York, 2: London, 3: Frankfurt, 4: Bengaluru, 5: Tokyo
+// Graph definition: 10 Core Global Datacenter Hubs
+// 0: San Francisco, 1: New York, 2: London, 3: Frankfurt, 4: Bengaluru, 
+// 5: Tokyo, 6: Sydney, 7: Sao Paulo, 8: Cape Town, 9: Dubai
 int graph[MAX_NODES][MAX_NODES] = {
-    {0, 45, INF, INF, INF, 80},   // 0: San Francisco
-    {45, 0, 55, INF, INF, INF},   // 1: New York
-    {INF, 55, 0, 15, 110, INF},   // 2: London
-    {INF, INF, 15, 0, 95, INF},   // 3: Frankfurt
-    {INF, INF, 110, 95, 0, 65},   // 4: Bengaluru
-    {80, INF, INF, INF, 65, 0}    // 5: Tokyo
+    {0, 45, INF, INF, INF, 80, 120, INF, INF, INF},  // 0: SF
+    {45, 0, 55, INF, INF, INF, INF, 90, INF, INF},   // 1: NY
+    {INF, 55, 0, 15, 110, INF, INF, INF, 130, INF},  // 2: London
+    {INF, INF, 15, 0, 95, INF, INF, INF, INF, 60},   // 3: Frankfurt
+    {INF, INF, 110, 95, 0, 65, INF, INF, INF, 45},   // 4: Bengaluru
+    {80, INF, INF, INF, 65, 0, 95, INF, INF, INF},   // 5: Tokyo
+    {120, INF, INF, INF, INF, 95, 0, INF, INF, INF}, // 6: Sydney
+    {INF, 90, INF, INF, INF, INF, INF, 0, 140, INF}, // 7: Sao Paulo
+    {INF, INF, 130, INF, INF, INF, INF, 140, 0, 110},// 8: Cape Town
+    {INF, INF, INF, 60, 45, INF, INF, INF, 110, 0}   // 9: Dubai
 };
 
 void dijkstra(int src, int dest, int dead_node) {
@@ -27,7 +32,6 @@ void dijkstra(int src, int dest, int dead_node) {
         parent[i] = -1;
     }
 
-    // Handle dead server/node bypass
     if (src == dead_node || dest == dead_node) {
         printf("ERROR|Source or destination node is down.\n");
         return;
@@ -38,7 +42,6 @@ void dijkstra(int src, int dest, int dead_node) {
     for (int count = 0; count < MAX_NODES - 1; count++) {
         int min = INF, u = -1;
 
-        // Find minimum distance node
         for (int v = 0; v < MAX_NODES; v++) {
             if (!visited[v] && dist[v] <= min && v != dead_node) {
                 min = dist[v];
@@ -49,7 +52,6 @@ void dijkstra(int src, int dest, int dead_node) {
         if (u == -1) break;
         visited[u] = 1;
 
-        // Update neighbors
         for (int v = 0; v < MAX_NODES; v++) {
             if (!visited[v] && graph[u][v] && graph[u][v] != INF && v != dead_node) {
                 if (dist[u] + graph[u][v] < dist[v]) {
@@ -65,7 +67,6 @@ void dijkstra(int src, int dest, int dead_node) {
         return;
     }
 
-    // Reconstruct shortest path array
     int path[MAX_NODES];
     int path_index = 0;
     int curr = dest;
@@ -75,7 +76,6 @@ void dijkstra(int src, int dest, int dead_node) {
         curr = parent[curr];
     }
 
-    // Format output string for Flask: RESULT|total_latency|node,node,node
     printf("RESULT|%d|", dist[dest]);
     for (int i = path_index - 1; i >= 0; i--) {
         printf("%d", path[i]);
@@ -97,3 +97,8 @@ int main(int argc, char *argv[]) {
     dijkstra(src, dest, dead_node);
     return 0;
 }
+
+    
+    
+
+    
