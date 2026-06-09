@@ -5,58 +5,42 @@ from flask import Flask, render_template, jsonify, request
 
 app = Flask(__name__)
 
-# Expanded dictionary with new countries
-NODE_INFO = {
-    0: {"name": "San Francisco Edge", "region": "US-West"},
-    1: {"name": "New York Edge",     "region": "US-East"},
-    2: {"name": "London Gateway",    "region": "UK-Europe"},
-    3: {"name": "Frankfurt Hub",     "region": "EU-Central"},
-    4: {"name": "Bengaluru Core",    "region": "Asia-South"},
-    5: {"name": "Tokyo Pop",         "region": "Asia-East"},
-    6: {"name": "Sydney Relay",      "region": "Oceania"},
-    7: {"name": "São Paulo Link",    "region": "SA-East"},
-    8: {"name": "Cape Town Base",    "region": "AF-South"},
-    9: {"name": "Dubai Gateway",     "region": "ME-Central"}
-}
-
-def compile_binary():
-    binary = "./network_engine.exe" if sys.platform == "win32" else "./network_engine"
-    if not os.path.exists(binary):
-        subprocess.run(["gcc", "network_engine.c", "-o", binary], check=True)
-    return binary
+# Compile C binary once at startup
+def build_c_engine():
+    binary_name = "network_engine"
+    # Clean previous binary if exists
+    if os.path.exists(binary_name):
+        os.remove(binary_name)
+    try:
+        subprocess.run(["gcc", "-o", binary_name, "network_engine.c"], check=True)
+        os.chmod(binary_name, 0o755)
+        print("C Engine compiled and set to executable.")
+    except Exception as e:
+        print(f"Critical Compilation Error: {e}")
 
 @app.route("/", methods=["GET"])
 def index():
-    return render_template("dashboard.html", nodes=NODE_INFO)
+    # Basic node data for the frontend
+    nodes = {0: {"name": "SF", "region": "US"}, 1: {"name": "NY", "region": "US"}, 
+             2: {"name": "London", "region": "EU"}, 3: {"name": "Frankfurt", "region": "EU"}}
+    return render_template("dashboard.html", nodes=nodes)
 
 @app.route("/route-traffic", methods=["POST"])
 def route_traffic():
+    data = request.json
+    src = str(data.get("source"))
+    dest = str(data.get("destination"))
+    dead = str(data.get("dead_node", "-1"))
+    
     try:
-        data = request.json
-        src, dest, dead = str(data.get("source")), str(data.get("destination")), str(data.get("dead_node", -1))
-        binary = compile_binary()
-        
-        process = subprocess.Popen([binary, src, dest, dead], stdout=subprocess.PIPE, text=True)
-        stdout, _ = process.communicate()
-        
-        if "RESULT" in stdout:
-            parts = stdout.strip().split("|")
-            latency = int(parts[1])
-            path_nodes = [int(x) for x in parts[2].split(",")]
-            path_names = [NODE_INFO[nid]["name"] for nid in path_nodes]
-            return jsonify({
-                "success": True,
-                "latency": f"{latency} ms",
-                "path_nodes": path_nodes,
-                "path_display": " → ".join(path_names),
-                "throughput": f"{max(40, 1000 // latency)} Gbps"
-            })
-        return jsonify({"success": False, "error": "Engine routing exception"})
+        # Execute binary: ./network_engine <src> <dest> <dead_node>
+        result = subprocess.run(["./network_engine", src, dest, dead], 
+                                capture_output=True, text=True, check=True)
+        return jsonify({"output": result.stdout.strip(), "success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
 if __name__ == "__main__":
+    build_c_engine()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
-        
