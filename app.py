@@ -5,7 +5,6 @@ from flask import Flask, render_template, jsonify, request
 
 app = Flask(__name__)
 
-# Expanded dictionary with new countries
 NODE_INFO = {
     0: {"name": "San Francisco Edge", "region": "US-West"},
     1: {"name": "New York Edge",     "region": "US-East"},
@@ -19,10 +18,15 @@ NODE_INFO = {
     9: {"name": "Dubai Gateway",     "region": "ME-Central"}
 }
 
-def compile_binary():
-    binary = "./network_engine.exe" if sys.platform == "win32" else "./network_engine"
+def get_binary():
+    binary = "./network_engine"
+    # Linux-specific fix: Ensure binary exists and is executable
     if not os.path.exists(binary):
-        subprocess.run(["gcc", "network_engine.c", "-o", binary], check=True)
+        try:
+            subprocess.run(["gcc", "network_engine.c", "-o", binary], check=True)
+            os.chmod(binary, 0o755)  # Set execution permissions
+        except subprocess.CalledProcessError as e:
+            print(f"Compilation failed: {e}")
     return binary
 
 @app.route("/", methods=["GET"])
@@ -33,28 +37,36 @@ def index():
 def route_traffic():
     try:
         data = request.json
-        src, dest, dead = str(data.get("source")), str(data.get("destination")), str(data.get("dead_node", -1))
-        binary = compile_binary()
+        src = str(data.get("source", 0))
+        dest = str(data.get("destination", 4))
+        dead = str(data.get("dead_node", -1))
         
-        process = subprocess.Popen([binary, src, dest, dead], stdout=subprocess.PIPE, text=True)
-        stdout, _ = process.communicate()
+        binary = get_binary()
+        
+        # Using check=True to catch errors during execution
+        process = subprocess.run([binary, src, dest, dead], capture_output=True, text=True)
+        stdout = process.stdout
         
         if "RESULT" in stdout:
             parts = stdout.strip().split("|")
             latency = int(parts[1])
+            # The C code should output comma-separated nodes in parts[2]
             path_nodes = [int(x) for x in parts[2].split(",")]
-            path_names = [NODE_INFO[nid]["name"] for nid in path_nodes]
+            # Filter out nodes not in our dictionary
+            path_names = [NODE_INFO.get(nid, {"name": "Unknown"})["name"] for nid in path_nodes]
+            
             return jsonify({
                 "success": True,
                 "latency": f"{latency} ms",
                 "path_nodes": path_nodes,
                 "path_display": " → ".join(path_names),
-                "throughput": f"{max(40, 1000 // latency)} Gbps"
+                "throughput": f"{max(40, 1000 // (latency + 1))} Gbps"
             })
-        return jsonify({"success": False, "error": "Engine routing exception"})
+        return jsonify({"success": False, "error": "Routing engine produced invalid output"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
 if __name__ == "__main__":
+    # Ensure port is pulled from environment for Render
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
